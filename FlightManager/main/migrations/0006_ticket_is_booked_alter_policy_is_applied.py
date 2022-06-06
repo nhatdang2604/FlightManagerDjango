@@ -15,7 +15,11 @@ class Migration(migrations.Migration):
             name='is_booked',
             field=models.BooleanField(default=False, null=True),
         ),
-        migrations.AlterField(
+        migrations.RemoveField(
+            model_name='policy',
+            name='is_applied',
+        ),
+        migrations.AddField(
             model_name='policy',
             name='is_applied',
             field=models.BooleanField(default=False, null=True),
