@@ -27,7 +27,7 @@ SECRET_KEY = 'django-insecure-r0ub03fo2i%a-t^yzp_gai7r#jr=qn15(k@vp*x&&3x$^^kgq2
 DEBUG = True
 
 ALLOWED_HOSTS = [
-    'group13-flight-manager-testing.herokuapp.com/',
+    'group13-flight-manager-testing.herokuapp.com',
     '127.0.0.1',   
 ]
 
