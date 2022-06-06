@@ -26,7 +26,10 @@ SECRET_KEY = 'django-insecure-r0ub03fo2i%a-t^yzp_gai7r#jr=qn15(k@vp*x&&3x$^^kgq2
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    'https://group13-flight-manager-testing.herokuapp.com/',
+    '127.0.0.1',   
+]
 
 
 # Application definition
