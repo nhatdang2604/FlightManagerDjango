@@ -1,1 +1,1 @@
-web: gunicorn herokFlightManager.wsgi --log-file -
+web: gunicorn --pythonpath FlightManager FlightManager.wsgi --log-file -
