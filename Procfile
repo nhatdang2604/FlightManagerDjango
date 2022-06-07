@@ -1,1 +1,1 @@
-web: gunicorn --pythonpath FlightManager FlightManager.wsgi --log-file -
+web: gunicorn FlightManager.wsgi --log-file -
