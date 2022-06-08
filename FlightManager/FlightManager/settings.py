@@ -27,9 +27,10 @@ SECRET_KEY = 'django-insecure-r0ub03fo2i%a-t^yzp_gai7r#jr=qn15(k@vp*x&&3x$^^kgq2
 DEBUG = True
 
 ALLOWED_HOSTS = [
-    'group13-flight-manager-testing.herokuapp.com', #using dbsqlite3    
-    'flightlive-cli.herokuapp.com',                 #using postgreSQL
-    '127.0.0.1',   
+    # 'group13-flight-manager-testing.herokuapp.com', #using dbsqlite3    
+    # 'flightlive-cli.herokuapp.com',                 #using postgreSQL
+    # '127.0.0.1',
+    '*',        #for accept to tutorial deployment   
 ]
 
 
