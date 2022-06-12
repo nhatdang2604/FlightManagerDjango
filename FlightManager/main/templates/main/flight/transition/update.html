@@ -7,31 +7,36 @@ Update Transition Airport
 {% block content %}
 <div class="container">
     <div class="row">
-        <div class="card card-body">
-            <h5 class="page-title">Update Transition Airport</h5>
-            {% for message in messages %}
-                {% if message.tags == 'success' %}
-                    <p class="text-success">{{ message }}</p>
-                {% endif %}
-            {% endfor %}
-            <a href="{% url 'flight.detail' transitionairport.flight.id %}">Back to flight detail</a>
-            <hr>
-            <form action="{% url 'flight.transition.update' transitionairport.id %}" method="POST">
-                {% csrf_token %}
-                {% for field in form %}
-                <div class="form-group">
-                    {{ field.label_tag }}
-                    {{ field }}
-                    <ul class="text-danger">
-                        {% for error in field.errors %}
-                            <li>{{ error }}</li>
-                        {% endfor %}
-                    </ul>
-                </div>
+        <div class="col-md-4">
+            {% include 'main/flight/sideinfo.html' with flight=transitionairport.flight %}
+        </div>
+        <div class="col-md-8">
+            <div class="card card-body">
+                <h5 class="page-title">Update Transition Airport</h5>
+                {% for message in messages %}
+                    {% if message.tags == 'success' %}
+                        <p class="text-success">{{ message }}</p>
+                    {% endif %}
                 {% endfor %}
-                <button type="submit" class="btn btn-success">Update</button>
-                <button type="reset" class="btn btn-primary">Reset</button>
-            </form>
+                <a href="{% url 'flight.detail' transitionairport.flight.id %}">Back to flight detail</a>
+                <hr>
+                <form action="{% url 'flight.transition.update' transitionairport.id %}" method="POST">
+                    {% csrf_token %}
+                    {% for field in form %}
+                    <div class="form-group">
+                        {{ field.label_tag }}
+                        {{ field }}
+                        <ul class="text-danger">
+                            {% for error in field.errors %}
+                                <li>{{ error }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endfor %}
+                    <button type="submit" class="btn btn-success">Update</button>
+                    <button type="reset" class="btn btn-primary">Reset</button>
+                </form>
+            </div>
         </div>
     </div>
 </div>

@@ -1,0 +1,85 @@
+{% extends 'main/main.html' %}
+
+{% block title %}
+Flight General Report
+{% endblock title %}
+
+{% block content %}
+<div class='container'>
+    <div class='row'>
+        <div class='col-md-3'>
+            <div class="card card-body">
+                <h5 class="page-title">Report criteria</h5>
+                <hr>
+                <form action="{% url 'report.general' %}" method="GET">
+                    {% for field in filter.form %}
+                        <div class="form-group">
+                            {{ field.label_tag }}
+                            {{ field }}
+                            <ul class="text-danger">
+                                {% for error in field.error %}
+                                    <li>{{ error }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    {% endfor %}
+
+                    <button type="submit" class="btn btn-info btn-block">Generate report</button>
+                </form>
+            </div>
+            
+        </div>
+        <div class='col-md-9'>
+            <div class="card card-body">
+                <h5 class="page-title">Report detail</h5>
+                <table class='table'>
+                    <thead class="thead-dark">
+                        <th>Flight</th>
+                        <th>Datetime</th>
+                        <th>Total seats</th>
+                        <th>Total tickets sold</th>
+                        <th>Revenue</th>
+                        <th> 
+                            %
+                            <span data-bs-toggle="tooltip" data-bs-placement="top" title="Total tickets sold / Total seats">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-info-circle-fill" viewBox="0 0 16 16">
+                                    <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm.93-9.412-1 4.705c-.07.34.029.533.304.533.194 0 .487-.07.686-.246l-.088.416c-.287.346-.92.598-1.465.598-.703 0-1.002-.422-.808-1.319l.738-3.468c.064-.293.006-.399-.287-.47l-.451-.081.082-.381 2.29-.287zM8 5.5a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/>
+                                </svg>
+                            </span>
+                        </th>
+                        <th>Details</th>
+                    </thead>
+                    <tbody>
+                        {% if not page_obj %}
+                            <tr>
+                                <td colspan="6">No records found. Try changing the criteria, maybe?</td>
+                            </tr>
+                        {% else %}
+                            {% for flight in page_obj %}
+                                <tr>
+                                    <td>{{ flight }}</td>
+                                    <td>{{ flight.date_time }}</td>
+                                    <td>{{ flight.total_seats }}</td>
+                                    <td>{{ flight.total_tickets_sold }}</td>
+                                    <td>{{ flight.revenue }}$</td>
+                                    <td>{{ flight.ticket_sold_percentage|floatformat:2 }}</td>
+                                    <td>
+                                        <a href="{% url 'flight.detail' flight.id %}" class="btn btn-info btn-sm">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-info-circle" viewBox="0 0 16 16">
+                                                <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                                                <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
+                                            </svg>
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        {% endif %}
+                    </tbody>
+                </table>
+
+                {% include 'main/paginator.html' %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

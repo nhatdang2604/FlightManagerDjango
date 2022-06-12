@@ -6,13 +6,19 @@ Delete Transition Airport
 {% block content %}
 <div class="container">
     <div class="row">
-        <div class="card card-body">
-            <p>Are you sure you want to delete "{{ transitionairport }}"?<p>
-            <form action="{% url 'flight.transition.delete' transitionairport.id %}" method="POST">
-                {% csrf_token %}
-                <a class="btn btn-warning" href="{% url 'flight.detail' transitionairport.flight.id %}">Cancel</a>
-                <button type="submit" class="btn btn-danger">Delete</button>
-            </form>
+        <div class="col-md-4">
+            {% include 'main/flight/sideinfo.html' with flight=transitionairport.flight %}
+        </div>
+        <div class="col-md-8">
+            <div class="card card-body">
+                <p>Are you sure you want to delete "{{ transitionairport }}"?<p>
+                <p class="text-danger">Note: this action cannot be undo, so please be careful with your decision.</p>
+                <form action="{% url 'flight.transition.delete' transitionairport.id %}" method="POST">
+                    {% csrf_token %}
+                    <a class="btn btn-warning" href="{% url 'flight.detail' transitionairport.flight.id %}">Cancel</a>
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
         </div>
     </div>
 </div>

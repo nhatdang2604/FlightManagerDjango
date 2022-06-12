@@ -22,10 +22,21 @@ Login
         <form method='POST'>
             {% csrf_token %}
 
-            {{ form.as_p }}
+            {% for field in form %}
+            <div class="form-group">
+                {{ field.label_tag }}
+                {{ field }}
+                <ul class="text-danger">
+                    {% for error in field.errors %}
+                        <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endfor %}
 
             <div class='form-group'>
                 <button type='submit' class='btn btn-lg btn-success btn-block'>Login</button>
+                <br>
                 <p class='text-muted'>Haven't got an account yet?</p>
                 <a href='{% url "auth.signup" %}' class='btn btn-lg btn-info btn-block'>Join us</a>
             </div>

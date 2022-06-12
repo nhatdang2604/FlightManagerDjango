@@ -7,9 +7,11 @@ Create a new Transition Airport
 {% block content %}
 <div class="container">
     <div class="row">
+        <div class="col-md-4">
+            {% include 'main/flight/sideinfo.html' %}
+        </div>
         <div class="card card-body">
             <h5 class="page-title">Create a new Transition Airport</h5>
-            <a href="{% url 'flight.detail' flight.id %}">Back to flight view</a>
             <hr>
             <form action="{% url 'flight.transition.create' flight.id %}" method="POST">
                 {% csrf_token %}

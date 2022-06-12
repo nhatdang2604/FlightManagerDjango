@@ -1,43 +1,48 @@
 {% load static %}
 
 <nav class="navbar sticky-top navbar-expand-lg navbar-dark bg-dark justify-content-between">
-    <a class="navbar-brand" href="{% url 'home' %}">
-        <img src="{% static 'images/logo.png' %}" width="253" height="54" alt="Logo">
-    </a>
-    <ul class='nav navbar-nav mr-auto mt-2 mt-lg-0'>
-        <li class='nav-item'>
-            <a class='nav-link' href='{% url "flight.list" %}'>Flight</a>
-        </li>
-        {% if user.is_authenticated %}
-            {% if perms.main.view_airport %}
-            <li class="nav-item">
-                <a class="nav-link" href="{% url 'airport.list' %}">Airport</a>
-            </li>
-            {% endif %}
-        {% endif %}
-        
-    </ul>
-    
-    <ul class="nav navbar-nav my-2 my-lg-0">
-        {% if not user.is_authenticated %}
-        <li class='nav-item'>
-            <a class='nav-link' href='{% url "auth.signup" %}'>Sign up</a>
-        </li>
-        <li class='nav-item'>
-            <a class='nav-link' href='{% url "auth.signin" %}'>Sign in</a>
-        </li>
-        {% else %}
-        <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                Hello, {{ request.user }}
-            </a>
-            <ul class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">
-                <li><a class='dropdown-item' href="{% url 'profile.view' %}">Profile</a></li>
-                <li><hr class="dropdown-divider"></li>
-                <li>{% include 'main/auth/logout.html' %}</li>
+    <div class="container-fluid">
+        <a class="navbar-brand" href="{% url 'home' %}">
+            <img src="{% static 'images/logo.png' %}" width="268" height="49" alt="Logo">
+        </a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class='nav navbar-nav mr-auto mt-2 mt-lg-0'>
+                <li class='nav-item'>
+                    <a class='nav-link' href='{% url "flight.list" %}'>Available Flights</a>
+                </li>
+                {% if perms.main.view_airport %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'airport.list' %}">Airport</a>
+                    </li>
+                {% endif %}
             </ul>
-        </li>
-        {% endif %}
-    </ul>
+            
+            <ul class="nav navbar-nav my-2 my-lg-0">
+                {% if not user.is_authenticated %}
+                <li class='nav-item'>
+                    <a class='nav-link' href='{% url "auth.signup" %}'>Sign up</a>
+                </li>
+                <li class='nav-item'>
+                    <a class='nav-link' href='{% url "auth.signin" %}'>Sign in</a>
+                </li>
+                {% else %}
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        Hello, {{ request.user }}
+                    </a>
+                    <ul class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">
+                        <li><a class='dropdown-item' href="{% url 'profile.view' %}">Profile</a></li>
+                        <li><a href="{% url 'flight.reservation.list' %}" class="dropdown-item">Your tickets</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>{% include 'main/auth/logout.html' %}</li>
+                    </ul>
+                </li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
 </nav>
 

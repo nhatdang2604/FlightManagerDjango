@@ -1,9 +1,10 @@
-from django.forms import ModelForm
+from django.forms import ModelForm, ValidationError
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm, PasswordChangeForm
 from django.contrib.auth.models import User
 from django import forms
 
 from .models import *
+import re
 
 # Authentication forms
 class LoginForm(AuthenticationForm):
@@ -100,6 +101,7 @@ class ChangePasswordForm(PasswordChangeForm):
             'placeholder' : 'Confirm your new password',
         })
 
+# Flight forms
 class FlightForm(ModelForm):
     '''Flight form
 
@@ -139,7 +141,7 @@ class FlightForm(ModelForm):
         arrival_airport = self.cleaned_data.get('arrival_airport')
 
         if departure_airport == arrival_airport:
-            raise forms.ValidationError({
+            raise ValidationError({
                 'departure_airport' : 'Departure and Arrival Airport must not be the same.',
                 'arrival_airport' : 'Departure and Arrival Airport must not be the same.'
             })
@@ -151,6 +153,8 @@ class FlightDetailForm(ModelForm):
     - flight_time
     - first_class_seat_size
     - second_class_seat_size
+    - first_class_ticket_price
+    - second_class_ticket_price
     '''
 
     '''Integers defined here
@@ -173,6 +177,18 @@ class FlightDetailForm(ModelForm):
             'placeholder' : 'Total economy class seats',
         }),
     )
+    first_class_ticket_price = forms.DecimalField(
+        widget = forms.NumberInput(attrs = {
+            'class' : 'form-control',
+            'placeholder' : 'Price for a First Class ticket',
+        }),
+    )
+    second_class_ticket_price = forms.DecimalField(
+        widget = forms.NumberInput(attrs = {
+            'class' : 'form-control',
+            'placeholder' : 'Price for a Economy Class ticket',
+        }),
+    )
 
     class Meta:
         model = FlightDetail
@@ -188,22 +204,35 @@ class FlightDetailForm(ModelForm):
         flight_time = self.cleaned_data.get('flight_time')
         first_class_seat_size = self.cleaned_data.get('first_class_seat_size')
         second_class_seat_size = self.cleaned_data.get('second_class_seat_size')
+        first_class_ticket_price = self.cleaned_data.get('first_class_ticket_price')
+        second_class_ticket_price = self.cleaned_data.get('second_class_ticket_price')
 
         if flight_time <= 0:
-            raise forms.ValidationError({
+            raise ValidationError({
                 'flight_time' : 'Flight time cannot be negative or zero minutes.'
             })
         
         if first_class_seat_size < 0:
-            raise forms.ValidationError({
+            raise ValidationError({
                 'first_class_seat_size' : 'First class seats cannot be a negative.'
             })
 
         if second_class_seat_size < 0:
-            raise forms.ValidationError({
+            raise ValidationError({
                 'second_class_seat_size' : 'Economy class seats cannot be a negative.'
             })
+        
+        if first_class_ticket_price < 0:
+            raise ValidationError({
+                'first_class_ticket_price' : 'First class ticket price cannot be negative.'
+            })
+        
+        if second_class_ticket_price < 0:
+            raise ValidationError({
+                'second_class_ticket_price' : 'Economy class ticket price cannot be negative.'
+            })
 
+# Airport forms
 class AirportForm(ModelForm):
     '''Airport Form
 
@@ -238,6 +267,18 @@ class TransitionAirportForm(ModelForm):
             'placeholder' : 'Transition time',
         }),
     )
+    note = forms.CharField(
+        widget = forms.Textarea(attrs = {
+            'class' : 'form-control',
+            'rows' : 3,
+            'placeholder' : 'Note (optional)'
+        }),
+        required = False,
+    )
+
+    def __init__(self, *args, **kwargs) -> None:
+        self.route_airports = kwargs.pop('route_airports')
+        super().__init__(*args, **kwargs)
 
     class Meta:
         model = TransitionAirport
@@ -250,11 +291,6 @@ class TransitionAirportForm(ModelForm):
             'airport' : forms.Select(attrs = {
                 'class' : 'form-control',
             }),
-            'note' : forms.Textarea(attrs = {
-                'class' : 'form-control',
-                'rows' : 3,
-                'placeholder' : 'Note (optional)'
-            }),
         }
     
     def clean(self):
@@ -263,12 +299,113 @@ class TransitionAirportForm(ModelForm):
         - transition_time must be > 0.
         '''
         transition_time = self.cleaned_data.get('transition_time')
+        airport = self.cleaned_data.get('airport')
 
         if transition_time <= 0:
-            raise forms.ValidationError({
+            raise ValidationError({
                 'transition_time' : 'Transition time cannot be negative or zero minutes!'
             })
 
+        if airport in self.route_airports:
+            raise ValidationError({
+                'airport' : 'This airport existed in flight route, please double-check.'
+            })
+
+# Ticket forms
+class FlightTicketForm(ModelForm):
+    '''FlightTicketForm
+
+    Required fields:
+    - name
+    - phone
+    - identity_code
+    - ticket_class
+    '''
+
+    '''Change default order of fields
+    '''
+    field_order = (
+        'name',
+        'phone',
+        'identity_code',
+        'ticket_class',
+    )
+
+    def __init__(self, *args, **kwargs) -> None:
+        self.flight = kwargs.pop('flight', None)
+        super().__init__(*args, **kwargs)
+
+    def clean(self):
+        ticket_class = self.cleaned_data.get('ticket_class')
+
+        ticket_class_condition_check = True
+
+        '''This is a complete hell, but we don't have time to make a dynamically loaded ticket-class validation.
+        '''
+
+        if ticket_class.name == "First":
+            ticket_class_condition_check = self.flight.flightdetail.first_class_seat_size > self.flight.ticket_set.filter(ticket_class = ticket_class).count()
+
+        elif ticket_class.name == "Economy":
+            ticket_class_condition_check = self.flight.flightdetail.second_class_seat_size > self.flight.ticket_set.filter(ticket_class = ticket_class).count()
+
+        if not ticket_class_condition_check:
+            raise ValidationError({
+                'ticket_class' : 'This class is out of seats, please choose another class.'
+            })
+        
+        '''Phone and Identity Code should be numeric only.
+        '''
+        phone = self.cleaned_data.get('phone')
+        identity_code = self.cleaned_data.get('identity_code')
+
+        if not re.match(r'\d', phone):
+            raise ValidationError({
+                'phone' : 'Phone should contains numeric characters only.'
+            })
+        
+        if not re.match(r'\d', identity_code):
+            raise ValidationError({
+                'identity_code' : 'Identity Code should contains numeric characters only.'
+            })
+
+    class Meta:
+        model = Ticket
+        fields = '__all__'
+        exclude = [
+            'customer',
+            'flight',
+            'is_booked',
+            'price'
+        ]
+
+        widgets = {
+            'ticket_class' : forms.Select(
+                attrs = {
+                    'class' : 'form-control'
+                }
+            ),
+            'name' : forms.TextInput(
+                attrs = {
+                    'class' : 'form-control',
+                    'placeholder' : 'Your name',
+                }
+            ),
+            'phone' : forms.TextInput(
+                attrs = {
+                    'class' : 'form-control',
+                    'placeholder' : 'Your phone',
+                }
+            ),
+            'identity_code' : forms.TextInput(
+                attrs = {
+                    'class' : 'form-control',
+                    'placeholder' : 'Your Identity Code',
+                }
+            ),
+        }
+
+# Customer forms
 class CustomerForm(ModelForm):
     '''Customer Form
 
@@ -298,3 +435,22 @@ class CustomerForm(ModelForm):
                 'placeholder' : 'Your ID',
             }),
         }
+    
+    def clean(self):
+        '''Data validation.
+        '''
+
+        '''Phone and Identity Code should be numeric only.
+        '''
+        phone = self.cleaned_data.get('phone')
+        identity_code = self.cleaned_data.get('identity_code')
+
+        if not re.match(r'\d', phone):
+            raise ValidationError({
+                'phone' : 'Phone should contains numeric characters only.'
+            })
+        
+        if not re.match(r'\d', identity_code):
+            raise ValidationError({
+                'identity_code' : 'Identity Code should contains numeric characters only.'
+            })

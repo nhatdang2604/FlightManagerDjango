@@ -1,0 +1,52 @@
+{% extends 'main/main.html' %}
+
+{% block title %}
+Payment Gate
+{% endblock title %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-md-4">
+            {% include 'main/flight/sideinfo.html' with flight=ticket.flight %}
+        </div>
+        <div class="col-md-8">
+            <div class="card card-body">
+                <h5 class="page-title">Confirm your payment</h5> 
+                <hr>
+                <table>
+                    <tbody>
+                        <tr>
+                            <td>Customer name</td>
+                            <td>{{ ticket.customer.name }}</td>
+                        </tr>
+                        <tr>
+                            <td>Customer phone</td>
+                            <td>{{ ticket.customer.phone }}</td>
+                        </tr>
+                        <tr>
+                            <td>Customer IC</td>
+                            <td>{{ ticket.customer.identity_code }}</td>
+                        </tr>
+                        <tr>
+                            <td>Ticket class</td>
+                            <td>{{ ticket.ticket_class }}</td>
+                        </tr>
+                        <tr>
+                            <td>Total payment</td>
+                            <td>{{ ticket.price }}$</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <hr>
+                <form action="{% url 'flight.reservation.payment' ticket.id %}" method="POST">
+                    {% csrf_token %}
+                    <p class="text-info">Press Checkout to proceed to payment provider, Cancel to decline. Note that this action cannot be reversed.</p>
+                    <a href="{% url 'flight.reservation.detail' ticket.id %}" class="btn btn-warning">Cancel</a>
+                    <button type="submit" class="btn btn-primary">Checkout</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}

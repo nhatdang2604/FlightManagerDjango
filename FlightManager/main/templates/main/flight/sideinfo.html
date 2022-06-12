@@ -1,0 +1,34 @@
+<div class='card card-body'>
+    <center><h5 class='page-title'>Flight information</h5></center>
+    <table class='table'>
+        <tr>
+            <td>Flight number</td>
+            <td>{{ flight.id }}</td>
+        </tr>
+        <tr>
+            <td>Route</td>
+            <td>{{ flight.departure_airport }} (Dep.) - {{ flight.arrival_airport }} (Dest.)</td>
+        </tr>
+        <tr>
+            <td>Departure</td>
+            <td>{{ flight.date_time }}</td>
+        </tr>
+        <tr>
+            <td>Total seats</td>
+            <td>{{ flight.total_seats }}</td>
+        </tr>
+        <tr>
+            <td>First class</td>
+            <td>{{ flight.flightdetail.first_class_seat_size }} seats</td>
+        </tr>
+        <tr>
+            <td>Economy class</td>
+            <td>{{ flight.flightdetail.second_class_seat_size }} seats</td>
+        </tr>
+        <tr>
+            <td>Ticket price (first - economy)</td>
+            <td>{{ flight.flightdetail.first_class_ticket_price }}$ - {{ flight.flightdetail.second_class_ticket_price }}$</td>
+        </tr>
+    </table>
+    <a href='{% url "flight.detail" flight.id %}' class='btn btn-warning btn-block'>View flight detail</a>
+</div>

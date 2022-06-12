@@ -7,11 +7,9 @@ Flight Detail
 {% block content %}
 <div class="container">
     {% for message in messages %}
-    <div class="row">
         {% if message.tags == 'success' %}
             <p class="text-success">{{ message }}</p>
         {% endif %}
-    </div>
     {% endfor %}
     <div class="row">
         <div class="col">
@@ -28,7 +26,7 @@ Flight Detail
                         <td>{{ flight.departure_airport }}</td>
                     </tr>
                     <tr>
-                        <td>Arrival</td>
+                        <td>Destination</td>
                         <td>{{ flight.arrival_airport }}</td>
                     </tr>
                     <tr>
@@ -36,6 +34,15 @@ Flight Detail
                         <td>{{ flight.date_time }}</td>
                     </tr> 
                 </table>
+                <br>
+                {% if perms.main.add_reservation %}
+                    {% if flight.is_bookable %}
+                        <a class='btn btn-sm btn-success' href="{% url 'flight.reservation.create' flight.id %}">Book a ticket</a>
+                    {% else %}
+                        <p class="text-danger">This flight has already departed, so you can't make reservations.</p>
+                    {% endif %}
+                {% endif %}
+
                 {% if perms.main.change_flight %}
                 <hr>
                 <a href="{% url 'flight.update' flight.id %}">Update Flight basic informations</a>
@@ -47,21 +54,20 @@ Flight Detail
                 <h5>Flight Details</h5>
                 <hr>
                 <table>
-                    <tr>
-                        <td>Flight time</td>
-                        <td>{{ flight.flightdetail.flight_time }}</td>
-                        <td>(min)</td>
-                    </tr>
-                    <tr>
-                        <td>First class seats</td>
-                        <td>{{ flight.flightdetail.first_class_seat_size }}</td>
-                        <td>(seats)</td>
-                    </tr>
-                    <tr>
-                        <td>Economy class seats</td>
-                        <td>{{ flight.flightdetail.second_class_seat_size }}</td>
-                        <td>(seats)</td>
-                    </tr>
+                    <tbody>
+                        <tr>
+                            <td>Flight time</td>
+                            <td>{{ flight.flightdetail.flight_time }} (mins)</td>
+                        </tr>
+                        <tr>
+                            <td>First class</td>
+                            <td>{{ flight.flightdetail.first_class_seat_size }} (seats) / {{ flight.flightdetail.first_class_ticket_price }}$ (per seat)</td>
+                        </tr>
+                        <tr>
+                            <td>Economy class</td>
+                            <td>{{ flight.flightdetail.second_class_seat_size }} (seats) / {{ flight.flightdetail.second_class_ticket_price }}$ (per seat)</td>
+                        </tr>
+                    </tbody>
                 </table>
                 {% if perms.main.change_flight %}
                 <hr>
@@ -91,7 +97,7 @@ Flight Detail
                         </tr>
                         {% endif %}
                         
-                        {% for transition_airport in flight.transitionairport_set.all %}
+                        {% for transition_airport in transition_airport_list %}
                         <tr>
                             <td>{{ transition_airport.airport }}</td>
                             <td>{{ transition_airport.transition_time }}</td>
@@ -99,7 +105,7 @@ Flight Detail
                             <td>
                                 <div class="btn-group">
                                     {% if perms.main.change_flight %}
-                                        <a href="{% url 'flight.transition.update' transition_airport.id %}" class="btn btn-sm btn-warning">
+                                        <a href="{% url 'flight.transition.update' transition_airport.id %}" data-bs-toggle="tooltip" data-bs-placement="top" title="Edit" class="btn btn-sm btn-warning">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-pencil-square" viewBox="0 0 16 16">
                                                 <path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/>
                                                 <path fill-rule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5v11z"/>
@@ -107,7 +113,7 @@ Flight Detail
                                         </a>
                                     {% endif %}
                                     {% if perms.main.delete_flight %}
-                                        <a href="{% url 'flight.transition.delete' transition_airport.id %}" class='btn btn-sm btn-danger'>
+                                        <a href="{% url 'flight.transition.delete' transition_airport.id %}" data-bs-toggle="tooltip" data-bs-placement="top" title="Remove" class='btn btn-sm btn-danger'>
                                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16">
                                                 <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
                                                 <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>

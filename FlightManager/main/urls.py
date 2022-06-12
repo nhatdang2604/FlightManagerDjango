@@ -40,15 +40,14 @@ urlpatterns = [
     path("airport/transition/<str:pk>/delete", views.DeleteTransitionAirportView.as_view(), name = 'flight.transition.delete'),
 
     # Booking
-    path('booking/', views.booking, name = 'booking'),
+    path('flight/<str:pk>/reservation/create', views.CreateFlightTicketView.as_view(), name = 'flight.reservation.create'),
+    path('reservation/list', views.ListFlightTicketView.as_view(), name = 'flight.reservation.list'),
+    path('reservation/detail/<str:pk>/', views.DetailFlightTicketView.as_view(), name = 'flight.reservation.detail'),
+    path('reservation/detail/<str:pk>/update', views.UpdateFlightTicketView.as_view(), name = 'flight.reservation.update'),
+    path('reservation/detail/<str:pk>/delete', views.DeleteFlightTicketView.as_view(), name = 'flight.reservation.delete'),
+    path('reservation/payment/<str:pk>/', views.PayFlightTicketView.as_view(), name = 'flight.reservation.payment'),
 
     # Report
-    path('report/', views.report, name = 'report'),
-
-    #customer
-    #path('customer_list/', views.customer, name = "customer_list"),
-    path('customer_per/',views.customerPer, name = "customer_per"),
-    path('create_customer/', views.createCustomer, name = "create_customer"),
-    path('update_customer/', views.updateCustomer, name = "update_customer"),
-    path('delete_customer/', views.deleteCustomer, name = "delete_customer"),
+    path('report/general', views.ListFlightReportGeneralView.as_view(), name = 'report.general'),
+    path('report/yearly', views.ListFlightReportYearlyView.as_view(), name = 'report.yearly'),
 ]

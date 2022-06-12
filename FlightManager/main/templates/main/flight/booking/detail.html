@@ -1,0 +1,88 @@
+{% extends 'main/main.html' %}
+
+{% block title %}
+Booking Detail
+{% endblock title %}
+
+{% block content %}
+<div class="container">
+    {% for message in messages %}
+        {% if message.tags == 'success' %}
+            <p class="text-success">{{ message }}</p>
+        {% endif %}
+    {% endfor %}
+    <div class="row">
+        <div class="col-md-4">
+            {% include 'main/flight/sideinfo.html' with flight=ticket.flight %}
+        </div>
+        <div class="col-md-8">
+            <div class="row">
+                <div class="card card-body">
+                    <h5 class="page-title">Customer Details</h5>
+                    <hr>
+                    <table>
+                        <tr>
+                            <td>Customer name</td>
+                            <td>{{ ticket.name }}</td>
+                        </tr>
+                        <tr>
+                            <td>Customer phone</td>
+                            <td>{{ ticket.phone }}</td>
+                        </tr>
+                        <tr>
+                            <td>Customer ID</td>
+                            <td>{{ ticket.identity_code }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+            <div class="row" style="padding-top:10px;">
+                <div class="card card-body">
+                    <h5 class="page-title">Booking Details</h5>
+                    <hr>
+                    <table>
+                        <tr>
+                            <td>Ticket class</td>
+                            <td>{{ ticket.ticket_class }}</td>
+                        </tr>
+                        <tr>
+                            <td>Ticket price</td>
+                            <td>{{ ticket.price }}$</td>
+                        </tr>
+                        <tr>
+                            <td>Status</td>
+                            <td>
+                                {% if ticket.is_booked %}
+                                    <span class="badge badge-success">Paid</span>
+                                {% elif ticket.is_canceled %}
+                                    <span class="badge badge-danger" data-bs-toggle="tooltip" data-bs-placement="top" title="Canceled since the flight has taken off and no payment made.">Canceled</span>
+                                {% else %}
+                                    <span class="badge badge-warning" data-bs-toggle="tooltip" data-bs-placement="top" title="Payment needed">Unpaid</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Created at</td>
+                            <td>{{ ticket.date_created }}</td>
+                        </tr>
+                    </table>
+                    <br>
+                    {% if ticket.can_update %}
+                        <a href="{% url 'flight.reservation.payment' ticket.id %}" class="btn btn-success btn-sm">Checkout</a>
+                        <hr>
+                        <p class="text-muted">With non-checked-out tickets, you can</p>
+                        <a href="{% url 'flight.reservation.update' ticket.id %}" class="btn btn-info btn-sm">Update</a>
+                        <p class="text-muted">or,</p>
+                        <a href="{% url 'flight.reservation.delete' ticket.id %}" class="btn btn-danger btn-sm">Cancel booking</a>
+                    {% else %}
+                        {% if ticket.is_booked %}
+                        <p class="text-info">This ticket information cannot be changed since payment has been made.</p>
+                        {% endif %}
+                        <p class="text-primary">To cancel paid ticket and other refund problems, please contact Admin (+84) 0123456789 for further details.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}

@@ -7,32 +7,36 @@ Update Flight Basic Informations
 {% block content %}
 <div class="container">
     <div class="row">
-        <div class="card card-body">
-            <h5 class="page-title">Update Flight Basic Informations</h5>
-            {% for message in messages %}
-                {% if message.tags == 'success' %}
-                    <p class="text-success">{{ message }}</p>
-                {% endif %}
-            {% endfor %}
-            <a href="{% url 'flight.detail' flight.id %}">Back to flight view</a>
-            <hr>
-            <form action="{% url 'flight.update' flight.id %}" method="POST">
-                {% csrf_token %}
-                {% for field in form %}
-                <div class="form-group">
-                    {{ field.label_tag }}
-                    {{ field }}
-                    <ul class="text-danger">
-                        {% for error in field.errors %}
-                            <li>{{ error }}</li>
-                        {% endfor %}
-                    </ul>
-                </div>
+        <div class="col-md-4">
+            {% include 'main/flight/sideinfo.html' %}
+        </div>
+        <div class="col-md-8">
+            <div class="card card-body">
+                <h5 class="page-title">Update Flight Basic Informations</h5>
+                {% for message in messages %}
+                    {% if message.tags == 'success' %}
+                        <p class="text-success">{{ message }}</p>
+                    {% endif %}
                 {% endfor %}
-                <button type="submit" class="btn btn-success">Update</button>
-                <button type="reset" class="btn btn-primary">Reset</button>
-                <a href="{% url 'flight.detail.update' flight.id %}">Update Flight Detail here.</a>
-            </form>
+                <hr>
+                <form action="{% url 'flight.update' flight.id %}" method="POST">
+                    {% csrf_token %}
+                    {% for field in form %}
+                    <div class="form-group">
+                        {{ field.label_tag }}
+                        {{ field }}
+                        <ul class="text-danger">
+                            {% for error in field.errors %}
+                                <li>{{ error }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endfor %}
+                    <button type="submit" class="btn btn-success">Update</button>
+                    <button type="reset" class="btn btn-primary">Reset</button>
+                    <a href="{% url 'flight.detail.update' flight.id %}">Update Flight Detail here.</a>
+                </form>
+            </div>
         </div>
     </div>
 </div>

@@ -2,10 +2,14 @@
 from django.shortcuts import render, redirect
 from django.http import HttpRequest, HttpResponse
 
+# Database interaction
+from django.db.models import Sum, Count, Q
+from django.db.models.functions import Coalesce, TruncMonth
+
 # Messages
 from django.contrib import messages
 from django.contrib.messages.views import SuccessMessageMixin
-from django.contrib.auth.mixins import PermissionRequiredMixin, LoginRequiredMixin
+from django.contrib.auth.mixins import PermissionRequiredMixin, LoginRequiredMixin, UserPassesTestMixin
 
 # For authentication
 from django.contrib.auth import authenticate, login, logout
@@ -24,6 +28,7 @@ from django.views.generic import ListView, CreateView, UpdateView, DeleteView, D
 # For filtered view
 from django_filters.views import FilterView
 from .filters import *
+from .utils import PaginatedFilterView, GraphPlotting
 
 # For models
 from .models import *
@@ -265,7 +270,7 @@ class UpdatePasswordView(LoginRequiredMixin, View):
 
     '''Where to redirects to after something went wrong.
     '''
-    redirect_to_success = 'home'
+    redirect_to_success = 'auth.signin'
 
     def __init__(self) -> None:
         self.login_url = reverse('auth.signin')
@@ -448,7 +453,16 @@ class ListFlightView(ListView):
     def get_queryset(self):
         '''Only show flights from now to the future!
         '''
-        return Flight.objects.filter(date_time__gt = now())
+        return Flight.objects.filter(
+            date_time__gt = now()
+        ).prefetch_related(
+            'flightdetail'
+        ).prefetch_related(
+            'departure_airport'
+        ).prefetch_related(
+            'arrival_airport'
+        )
+        
 
 class DetailFlightView(DetailView):
     '''DetailFlightView, expressed as an OOP class
@@ -461,6 +475,13 @@ class DetailFlightView(DetailView):
     '''HTML template used in DetailFlightView
     '''
     template_name = 'main/flight/detail/view.html'
+
+    def get_context_data(self, **kwargs):
+        '''Preventing n + 1 query on transition_airport
+        '''
+        context = super().get_context_data(**kwargs)
+        context['transition_airport_list'] = self.get_object().transitionairport_set.all().select_related('airport')
+        return context
 
 class CreateFlightView(LoginRequiredMixin, PermissionRequiredMixin, SuccessMessageMixin, CreateView):
     '''CreateFlightView, expressed as an OOP class.
@@ -639,6 +660,19 @@ class CreateTransitionAirportView(LoginRequiredMixin, PermissionRequiredMixin, S
     def __init__(self) -> None:
         self.login_url = reverse('auth.signin')
 
+    def get_form_kwargs(self):
+        '''Parsing list of airports for form validation
+        '''
+        kwargs = super().get_form_kwargs()
+        
+        flight = Flight.objects.get(id = self.kwargs.get('pk'))
+
+        kwargs['route_airports'] = [flight.departure_airport, flight.arrival_airport]
+        for transition_airport in flight.transitionairport_set.all():
+            kwargs['route_airports'].append(transition_airport.airport)
+
+        return kwargs
+
     def get_context_data(self, **kwargs):
         '''Since current view does not have parent flight's instance,
         this method will get parent flight's instance and parse it to the view.
@@ -691,6 +725,19 @@ class UpdateTransitionAirportView(LoginRequiredMixin, PermissionRequiredMixin, S
     def __init__(self) -> None:
         self.login_url = reverse('auth.signin')
 
+    def get_form_kwargs(self):
+        '''Parsing list of airports for form validation.
+        '''
+        kwargs = super().get_form_kwargs()
+        
+        flight = self.get_object().flight
+
+        kwargs['route_airports'] = [flight.departure_airport, flight.arrival_airport]
+        for transition_airport in flight.transitionairport_set.all():
+            kwargs['route_airports'].append(transition_airport.airport)
+
+        return kwargs
+
     def get_success_url(self) -> str:
         return reverse(self.success_url, kwargs = {
             'pk' : self.object.id
@@ -729,7 +776,7 @@ class DeleteTransitionAirportView(LoginRequiredMixin, PermissionRequiredMixin, S
         })
 
 # Search (Filter)
-class FlightSearchView(FilterView):
+class FlightSearchView(PaginatedFilterView, FilterView):
     '''FlightSearchView, expressed as an OOP class.
     '''
 
@@ -745,35 +792,481 @@ class FlightSearchView(FilterView):
     '''
     template_name = 'main/flight/search.html'
 
-def customer(request):
-    return render(request, 'customer/customer_list.html')
+    '''Maximum results to be displayed
+    '''
+    paginate_by = 10
 
-def booking(request):
-    return render(request, 'main/booking.html')
+    def get_queryset(self):
+        '''Prevent n + 1 and not including took-off flights in search result.
+        '''
+        queryset = super().get_queryset()
+        queryset = queryset.filter(date_time__gt = now()).prefetch_related('departure_airport').prefetch_related('arrival_airport').prefetch_related('flightdetail')
+        return queryset
 
-def report(request):
-    # More HTTP POST processing here
+# Booking
 
-    return render(request, 'main/report.html')
+class ListFlightTicketView(LoginRequiredMixin, ListView):
+    '''ListFlightTicketView, expressed as an OOP class.
+    '''
 
-#customer
-def customerPer(request):
-    return render(request, 'customer/customer_per.html')
+    '''Model used in ListFlightTicketView
+    '''
+    model = Ticket
 
-def createCustomer(request):
-    form= CustomerForm()
-    if request.method=='POST':
-        form=CustomerForm(request.POST)
-        if form.is_valid():
-            form.save()
-            return redirect('/')
+    '''HTML template used in ListFlightTicketView
+    '''
+    template_name = 'main/flight/booking/list.html'
 
-    context = {'form':form}
+    '''Maximum records in a page.
+    '''
+    paginate_by = 10
 
-    return render(request,'customer/customer_form.html', context)
+    def __init__(self) -> None:
+        self.login_url = reverse('auth.signin')
 
-def updateCustomer(request):
-    return render(request,'customer/customer_update.html')
+    def get_queryset(self):
+        '''Users should only see reservations made by them.
+        '''
+        queryset = Ticket.objects.filter(
+            customer = self.request.user.customer
+        ).prefetch_related(
+            'flight'
+        ).prefetch_related(
+            'ticket_class'
+        ).prefetch_related(
+            'customer'
+        )
+        return queryset
 
-def deleteCustomer(request):
-    return render(request,'customer/customer_delete.html')
+class DetailFlightTicketView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
+    '''DetailFlightTicketView, expressed as an OOP class.
+    '''
+
+    '''Model used in DetailFlightTicketView
+    '''
+    model = Ticket
+
+    '''HTMP template used in DetailFlightTicketView
+    '''
+    template_name = 'main/flight/booking/detail.html'
+
+    def test_func(self) -> bool:
+        '''User can only view his own tickets, except managers.
+        '''
+        current_customer = self.request.user.customer
+        ticket_customer = self.get_object().customer
+
+        if current_customer == ticket_customer:
+            return True
+        if current_customer.is_in_group('Manager'):
+            return True
+        return False
+
+    def __init__(self) -> None:
+        self.login_url = reverse('auth.signin')
+
+class CreateFlightTicketView(LoginRequiredMixin, UserPassesTestMixin, SuccessMessageMixin, CreateView):
+    '''CreateFlightTicketView, expressed as an OOP class.
+    '''
+
+    '''Model used in CreateFlightTicketView
+    '''
+    model = Ticket
+
+    '''HTML template used in CreateFlightTicketView
+    '''
+    template_name = 'main/flight/booking/create.html'
+
+    '''Form used in CreateFlightTicketView
+    '''
+    form_class = FlightTicketForm
+
+    '''Where to redirects to after success
+    '''
+    success_url = 'flight.reservation.detail'
+
+    '''Message to be displayed after success.
+    '''
+    success_message = 'Successfully booked this flight!'
+
+    def __init__(self) -> None:
+        self.login_url = reverse('auth.signin')
+    
+    def get_success_url(self) -> str:
+        return reverse(self.success_url, kwargs = {
+            'pk' : self.object.id,
+        })
+
+    def get_context_data(self, **kwargs):
+        '''Adding additional data to context
+        '''
+        context = super().get_context_data(**kwargs)
+
+        context["flight"] = Flight.objects.get(id = self.kwargs.get('pk'))
+
+        return context
+    
+    def get_form_kwargs(self):
+        '''Parsing this flight for form validation
+        '''
+        kwargs = super().get_form_kwargs()
+        kwargs['flight'] = Flight.objects.get(id = self.kwargs.get('pk'))
+        return kwargs
+
+    def test_func(self) -> bool:
+        flight = Flight.objects.get(id = self.kwargs.get('pk'))
+        return flight.is_bookable
+
+    def form_valid(self, form) -> HttpResponse:
+        '''Automatically add flight, customer and ticket price to form.
+        '''
+        form.instance.flight = Flight.objects.get(id = self.kwargs.get('pk'))
+        form.instance.customer = self.request.user.customer
+
+        # Hardcore ticket adding.
+        if form.instance.ticket_class.name == 'First':
+            form.instance.price = form.instance.flight.flightdetail.first_class_ticket_price
+        elif form.instance.ticket_class.name == 'Economy':
+            form.instance.price = form.instance.flight.flightdetail.second_class_ticket_price
+
+        return super().form_valid(form)
+
+class UpdateFlightTicketView(LoginRequiredMixin, UserPassesTestMixin, SuccessMessageMixin, UpdateView):
+    '''UpdateFlightTicketView, expressed as an OOP class.
+    '''
+
+    '''Model used in UpdateFlightTicketView
+    '''
+    model = Ticket
+
+    '''HTML template used in UpdateFlightTicketView
+    '''
+    template_name = 'main/flight/booking/update.html'
+
+    '''Form used in UpdateFlightTicketView
+    '''
+    form_class = FlightTicketForm
+
+    '''Where to redirects to after success
+    '''
+    success_url = 'flight.reservation.update'
+
+    '''Message to be displayed after success.
+    '''
+    success_message = 'Reservation updated successfully.'
+
+    def __init__(self) -> None:
+        self.login_url = reverse('auth.signin')
+    
+    def get_form_kwargs(self):
+        '''Parsing this flight for form validation
+        '''
+        kwargs = super().get_form_kwargs()
+        kwargs['flight'] = Ticket.objects.get(id = self.kwargs.get('pk')).flight
+        return kwargs
+
+    def get_success_url(self) -> str:
+        return reverse(self.success_url, kwargs = {
+            'pk' : self.object.id,
+        })
+    
+    def test_func(self) -> bool:
+        '''User can only update his own unpaid tickets, except managers.
+        '''
+        if not self.get_object().flight.is_bookable:
+            return False
+
+        current_customer = self.request.user.customer
+        ticket_customer = self.get_object().customer
+
+        if current_customer == ticket_customer:
+            return True
+        if current_customer.is_in_group('Manager'):
+            return True
+
+        return False
+
+    def form_valid(self, form) -> HttpResponse:
+        '''Automatically add flight, customer and ticket price to form.
+        '''
+        # Hardcore ticket adding.
+        if form.instance.ticket_class.name == 'First':
+            form.instance.price = form.instance.flight.flightdetail.first_class_ticket_price
+        elif form.instance.ticket_class.name == 'Economy':
+            form.instance.price = form.instance.flight.flightdetail.second_class_ticket_price
+
+        return super().form_valid(form)
+
+class DeleteFlightTicketView(LoginRequiredMixin, UserPassesTestMixin, SuccessMessageMixin, DeleteView):
+    '''DeleteFlightTicketView, expressed as an OOP class.
+    '''
+
+    '''Model used in DeleteFlightTicketView
+    '''
+    model = Ticket
+
+    '''HTML template used in DeleteFlightTicketView.
+    '''
+    template_name = 'main/flight/booking/delete.html'
+
+    '''Where to redirects to after success.
+    '''
+    success_url = 'flight.reservation.list'
+
+    '''Message to be displayed when success.
+    '''
+    success_message = 'Cancel reservation successfully.'
+
+    def __init__(self) -> None:
+        self.login_url = reverse('auth.signin')
+
+    def get_success_url(self) -> str:
+        return reverse(self.success_url)
+
+    def test_func(self) -> bool:
+        '''User can only delete his own unpaid tickets, except managers.
+        '''
+        if not self.get_object().flight.is_bookable:
+            return False
+
+        current_customer = self.request.user.customer
+        ticket_customer = self.get_object().customer
+
+        if current_customer == ticket_customer:
+            return True
+        if current_customer.is_in_group('Manager'):
+            return True
+
+        return False
+
+# Payment
+class PayFlightTicketView(LoginRequiredMixin, UserPassesTestMixin, SuccessMessageMixin, UpdateView):
+    '''PayFlightTicketView, expressed as an OOP class.
+    '''
+
+    '''Model to be used in PayFlightTicketView
+    '''
+    model = Ticket
+
+    '''Fields are binded, all operations are in form_valid method.
+    '''
+    fields = []
+
+    '''HTML template to be used in PayFlightTicketView
+    '''
+    template_name = 'main/flight/booking/payment.html'
+
+    '''Where to redirects to after success.
+    '''
+    success_url = 'flight.reservation.detail'
+
+    '''Message to be displayed after success.
+    '''
+    success_message = 'Payment created successfully!'
+
+    def __init__(self) -> None:
+        self.login_url = reverse('auth.signin')
+
+    def get_success_url(self) -> str:
+        return reverse(self.success_url, kwargs = {
+            'pk' : self.object.id,
+        })
+
+    def test_func(self) -> bool:
+        '''Ticket owner can pay for non-taken-off tickets.
+
+        Manager can pay for non-taken-off tickets, too.
+        '''
+        if not self.get_object().can_update:
+            return False
+        
+        current_customer = self.request.user.customer
+        ticket_customer = self.get_object().customer
+
+        if current_customer == ticket_customer:
+            return True
+        if current_customer.is_in_group('Manager'):
+            return True
+        
+        return False
+
+    def form_valid(self, form) -> HttpResponse:
+        '''Only update one field - is_booked.
+        '''
+        form.instance.is_booked = True
+        return super().form_valid(form)
+
+# Report
+class ListFlightReportGeneralView(LoginRequiredMixin, PermissionRequiredMixin, PaginatedFilterView, FilterView):
+    '''ListFlightReportGeneralView, expressed as an OOP class.
+    '''
+
+    '''Model used in ListFlightReportGeneralView
+    '''
+    model = Flight
+
+    '''Filterset used in ListFlightReportGeneralView 
+    '''
+    filterset_class = FlightReportGeneralFilter
+
+    '''HTML template used in ListFlightReportGeneralView
+    '''
+    template_name = 'main/flight/report/general.html'
+
+    '''Permission required to access this page.
+    '''
+    permission_required = 'main.create_flight'
+
+    '''Maximum results per page.
+    '''
+    paginate_by = 10
+
+    def __init__(self) -> None:
+        self.login_url = reverse('auth.signin')
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+
+        queryset = queryset.filter(
+            date_time__lt = now()
+        ).prefetch_related(
+            'flightdetail'
+        ).annotate(
+            revenue = Coalesce(Sum(
+                'ticket__price',
+                filter = Q(ticket__is_booked = True),
+            ), 0)
+        ).order_by('date_time')
+
+        return queryset
+
+class ListFlightReportYearlyView(LoginRequiredMixin, PermissionRequiredMixin, FilterView):
+    '''ListFlightReportYearlyView, expressed as an OOP class.
+    '''
+
+    '''Model used in ListFlightReportYearlyView
+    '''
+    model = Flight
+
+    '''Idk why, but this allows get_queryset passing data to get_context_data.
+    '''
+    strict = False
+
+    '''HTML template used in ListFlightReportYearlyView
+    '''
+    template_name = 'main/flight/report/yearly.html'
+
+    '''Filterset used in ListFlightReportYearlyView
+    '''
+    filterset_class = FlightReportYearlyFilter
+
+    '''Permission required to access this page.
+    '''
+    permission_required = 'main.create_flight'
+
+    def __init__(self) -> None:
+        self.login_url = reverse('auth.signin')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        try:
+            year = datetime.strptime(self.request.GET.get('date_time'), "%Y").year
+        except Exception:
+            year = datetime.now().year
+
+        context['date_time'] = year
+
+        '''We've already get queryset inside self.object_list,
+        Now we just adding some summarise.
+        '''
+
+        # Count total flights
+        context['total_flights'] = Flight.objects.filter(
+            date_time__year = year,
+            date_time__lt = now(),
+        ).count()
+
+        # Calculate total tickets sold
+        context['total_tickets_sold'] = sum(Flight.objects.filter(
+            date_time__year = year,
+            date_time__lt = now(),
+        ).annotate(
+            tickets_sold = Count(
+                'ticket__id',
+                filter = Q(ticket__is_booked = True),
+            )
+        ).values_list('tickets_sold', flat = True))
+
+        # Calculate total revenue
+        context['total_revenue'] = sum(Flight.objects.filter(
+            date_time__year = year,
+            date_time__lt = now(),
+        ).annotate(
+            revenue = Coalesce(Sum(
+                'ticket__price',
+                filter = Q(ticket__is_booked = True),
+            ), 0)
+        ).values_list('revenue', flat = True))
+        
+        # Total ratio = 0 if no revenue made, 100 otherwise.
+        context['total_ratio'] = (context['total_revenue'] > 0) * 100
+
+        # Adding ratio (revenue / total_revenue)
+        for month in self.object_list:
+            if context['total_revenue'] == 0:
+                month['ratio'] = 0
+            else:
+                month['ratio'] = month['revenue'] * 100 / context['total_revenue']
+
+        # Get formatted month label from list of months extracted from database's records.
+        month_list = [record.strftime('%B') for record in self.object_list.values_list('month', flat = True)]
+
+        # Adding flight graph
+        context['flight_graph'] = GraphPlotting(
+            month_list, 
+            self.object_list.values_list('total_flights', flat = True), 
+            'Flight Graph'
+        ).get_bar_plot('Month', 'Flights')
+
+        # Adding revenue graph
+        context['revenue_graph'] = GraphPlotting(
+            month_list, 
+            self.object_list.values_list('revenue', flat = True), 
+            'Revenue Graph'
+        ).get_bar_plot('Month', 'Revenue')
+
+        return context
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+
+        try:
+            year = datetime.strptime(self.request.GET.get('date_time'), "%Y").year
+        except Exception:
+            year = datetime.now().year
+
+        queryset = queryset.filter(
+            date_time__year = year,
+            date_time__lt = now(),
+        ).annotate(
+            month = TruncMonth('date_time')
+        ).values(
+            'month'
+        ).annotate(
+            total_flights = Count('id', distinct = True)
+        ).annotate(
+            total_tickets_sold = Count(
+                'ticket__id',
+                filter = Q(ticket__is_booked = True),
+            )
+        ).annotate(
+            revenue = Coalesce(Sum(
+                'ticket__price',
+                filter = Q(ticket__is_booked = True),
+            ), 0)
+        ).order_by('month')
+
+        print(queryset)
+
+        return queryset

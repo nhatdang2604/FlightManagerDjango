@@ -1,0 +1,98 @@
+{% extends 'main/main.html' %}
+
+{% block extracss %}
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.6.4/css/bootstrap-datepicker.css" rel="stylesheet"/>
+{% endblock extracss %}
+
+{% block title %}
+Flight Yearly Report
+{% endblock title %}
+
+{% block content %}
+<div class='container'>
+    <div class='row'>
+        <div class='col-md-3'>
+            <div class="card card-body">
+                <h5 class="page-title">Report criteria</h5>
+                <hr>
+                <form action="{% url 'report.yearly' %}" method="GET">
+                    <div class="form-group">
+                        <label for="date_time">Data range</label>
+                        <input type="text" name="date_time" value="{{ date_time }}" id="date_time" class="form-control" />
+                    </div>
+                    <button type="submit" class="btn btn-info btn-block">Generate report</button>
+                </form>
+            </div>
+        </div>
+        <div class='col-md-9'>
+            <div class="card card-body">
+                <h5 class="page-title">Report detail</h5>
+                <table class='table'>
+                    <thead class="thead-dark">
+                        <th>Month</th>
+                        <th>Total Flights</th>
+                        <th>Total tickets sold</th>
+                        <th>Total revenue</th>
+                        <th>
+                            %
+                            <span data-bs-toggle="tooltip" data-bs-placement="top" title="Compares to total revenue">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-info-circle-fill" viewBox="0 0 16 16">
+                                    <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm.93-9.412-1 4.705c-.07.34.029.533.304.533.194 0 .487-.07.686-.246l-.088.416c-.287.346-.92.598-1.465.598-.703 0-1.002-.422-.808-1.319l.738-3.468c.064-.293.006-.399-.287-.47l-.451-.081.082-.381 2.29-.287zM8 5.5a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/>
+                                </svg>
+                            </span>
+                        </th>
+                    </thead>
+                    <tbody>
+                        {% if not filter.qs %}
+                            <tr>
+                                <td colspan="5">No records found. Try changing the criteria, maybe?</td>
+                            </tr>
+                        {% else %}
+                            {% for record in filter.qs %}
+                                <tr>
+                                    <td>{{ record.month|date:"M Y" }}</td>
+                                    <td>{{ record.total_flights }}</td>
+                                    <td>{{ record.total_tickets_sold }}</td>
+                                    <td>{{ record.revenue }}$</td>
+                                    <td>{{ record.ratio|floatformat:2 }}</td>
+                                </tr>
+                            {% endfor %}
+                        {% endif %}
+                    </tbody>
+                    {% if filter.qs %}
+                    <tfoot>
+                        <td><b>Total</b></td>
+                        <td>{{ total_flights }}</td>
+                        <td>{{ total_tickets_sold }}</td>
+                        <td>{{ total_revenue }}$</td>
+                        <td>{{ total_ratio }}</td>
+                    </tfoot>
+                    {% endif %}
+                </table>
+            </div>
+            {% if filter.qs %}
+            <div class="card card-body" style="margin-top: 10px;">
+                <h5 class="page-title">Graph</h5>
+                <hr>
+                <img class='img-responsive' src="data:image/png;base64, {{ flight_graph }}" alt="">
+                <img class='img-responsive' src="data:image/png;base64, {{ revenue_graph }}" alt="">
+            </div>
+            {% endif %}
+            
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extrajs %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.6.4/js/bootstrap-datepicker.js"></script>
+
+<script type="text/javascript">
+    $("#date_time").datepicker({
+        format: "yyyy",
+        viewMode: "years", 
+        minViewMode: "years",
+        orientation: "bottom auto",
+    });
+</script>
+{% endblock extrajs %}
